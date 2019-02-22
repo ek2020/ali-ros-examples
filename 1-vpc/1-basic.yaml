@@ -1,0 +1,44 @@
+ROSTemplateFormatVersion: "2015-09-01"
+Description: Basic VPC setup with two VSwitches in zones you can choose
+
+Parameters:
+  Zone1:
+    Type: String
+    Default: eu-central-1a
+  Zone2:
+    Type: String
+    Default: eu-central-1b
+
+Resources:
+  Vpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      VpcName: default-vpc
+      Description: Default VPC with two VSwitches
+      CidrBlock: 10.0.0.0/8
+
+  VSwitch1:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VSwitchName: vswitch-1
+      Description: VSwitch 1
+      CidrBlock: 10.1.0.0/16
+      ZoneId: !Ref Zone1
+      VpcId: !Ref Vpc
+
+  VSwitch2:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VSwitchName: vswitch-2
+      Description: VSwitch 2
+      CidrBlock: 10.2.0.0/16
+      ZoneId: !Ref Zone2
+      VpcId: !Ref Vpc
+
+Outputs:
+  VpcId:
+    Value: !GetAtt Vpc.VpcId
+  VSwitch1Id:
+    Value: !GetAtt VSwitch1.VSwitchId
+  VSwitch2Id:
+    Value: !GetAtt VSwitch2.VSwitchId

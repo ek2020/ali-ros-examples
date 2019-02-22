@@ -1,0 +1,108 @@
+ROSTemplateFormatVersion: "2015-09-01"
+Description: VPC setup with two VSwitches and NAT gateway
+
+Parameters:
+  Zone1:
+    Type: String
+    Default: eu-central-1a
+  Zone2:
+    Type: String
+    Default: eu-central-1b
+  NatZone:
+    Type: String
+    Default: eu-central-1a
+  NatSpec:
+    Type: String
+    Default: Small
+    AllowedValues:
+      - Small
+      - Medium
+      - Large
+
+Resources:
+  Vpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      VpcName: nat-vpc
+      Description: Default VPC with two VSwitches
+      CidrBlock: 10.0.0.0/8
+
+  VSwitch1:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VSwitchName: vswitch-1
+      Description: VSwitch 1
+      CidrBlock: 10.1.0.0/16
+      ZoneId: !Ref Zone1
+      VpcId: !Ref Vpc
+
+  VSwitch2:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VSwitchName: vswitch-2
+      Description: VSwitch 2
+      CidrBlock: 10.2.0.0/16
+      ZoneId: !Ref Zone2
+      VpcId: !Ref Vpc
+
+  NatVSwitch:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VSwitchName: nat-vswitch
+      Description: NAT VSwitch
+      CidrBlock: 10.3.0.0/16
+      ZoneId: !Ref NatZone
+      VpcId: !Ref Vpc
+
+  NatGateway:
+    Type: ALIYUN::ECS::NatGateway
+    Properties:
+      VSwitchId: !Ref NatVSwitch
+      VpcId: !Ref Vpc
+      Description: NAT gateway
+      NatGatewayName: nat-gateway
+      Spec: Small
+
+  NatEip:
+    Type: ALIYUN::VPC::EIP
+    Properties:
+      Bandwidth: 1
+      InternetChargeType: PayByTraffic
+
+  NatEipAssociation:
+    Type: ALIYUN::VPC::EIPAssociation
+    Properties:
+      InstanceId: !Ref NatGateway
+      AllocationId: !Ref NatEip
+
+  VSwitch1SNat:
+    Type: ALIYUN::ECS::SNatEntry
+    DependsOn:
+      - NatEipAssociation
+    Properties:
+      SourceVSwitchId: !Ref VSwitch1
+      SNatTableId: !GetAtt NatGateway.SNatTableId
+      SNatIp: !GetAtt NatEip.EipAddress
+
+  VSwitch2SNat:
+    Type: ALIYUN::ECS::SNatEntry
+    DependsOn:
+      - NatEipAssociation
+    Properties:
+      SourceVSwitchId: !Ref VSwitch2
+      SNatTableId: !GetAtt NatGateway.SNatTableId
+      SNatIp: !GetAtt NatEip.EipAddress
+
+Outputs:
+  VpcId:
+    Value: !GetAtt Vpc.VpcId
+  VSwitch1Id:
+    Value: !GetAtt VSwitch1.VSwitchId
+  VSwitch2Id:
+    Value: !GetAtt VSwitch2.VSwitchId
+  NatGatewayId:
+    Value: !GetAtt NatGateway.NatGatewayId
+  NatVSwitchId:
+    Value: !GetAtt NatVSwitch.VSwitchId
+  NatEipAddress:
+    Value: !GetAtt NatEip.EipAddress
